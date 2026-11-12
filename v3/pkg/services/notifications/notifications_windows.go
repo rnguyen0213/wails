@@ -560,7 +560,24 @@ func (wn *windowsNotifier) buildToastXML(options NotificationOptions, category *
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal toast xml: %w", err)
 	}
-	return xml.Header + string(body), nil
+	return xml.Header + astralAsReferences(string(body)), nil
+}
+
+// astralAsReferences writes characters outside the BMP, such as emoji, as numeric references.
+// go-ole's NewHString takes the rune count for the UTF-16 length, cutting the document short by one
+// unit for each.
+func astralAsReferences(doc string) string {
+	var b strings.Builder
+
+	for _, r := range doc {
+		if r > 0xFFFF {
+			fmt.Fprintf(&b, "&#x%X;", r)
+		} else {
+			b.WriteRune(r)
+		}
+	}
+
+	return b.String()
 }
 
 // encodePayload combines an action ID and user data into a single encoded string
